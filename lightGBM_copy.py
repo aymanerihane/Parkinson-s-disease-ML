@@ -1,86 +1,54 @@
 import numpy as np
-# from decision_tree import LeafWiseTree
 from leafWiseGrowth import LeafWiseTree
-import matplotlib.pyplot as plt
-
-# Utility: Calculate Binary Cross-Entropy Loss Gradient and Hessian
-def binary_cross_entropy_grad_hess(preds, targets):
-    preds = np.clip(preds, 1e-6, 1 - 1e-6)  # Avoid division by zero
-    grad = preds - targets  # Gradient
-    hess = preds * (1 - preds)  # Hessian
-    return grad, hess
-
-# Utility: Sigmoid function
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
-# LightGBM model structure
-class LightGBM:
-    def __init__(self, n_estimators=10, learning_rate=0.1,min_samples_split=10):
+# Define the LightFBM class (LightGBM-like)
+class LightFBM:
+    def __init__(self, n_estimators=3, learning_rate=0.1, max_depth=3, n_jobs=4):
+        self.trees = []
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
-        self.min_samples_split = min_samples_split
-        self.trees = []
+        self.max_depth = max_depth
+        self.initial_prediction = 0.5  # Starting prediction for logistic regression
+        self.n_jobs = n_jobs  # Number of parallel threads to use
 
     def fit(self, X, y):
-        n_samples, n_features = X.shape
-        preds = np.full(n_samples, 0.5)  # Initial prediction (log odds = 0)
+        # Initialize the prediction with constant value
+        predictions = np.full_like(y, self.initial_prediction, dtype=float)
 
         for i in range(self.n_estimators):
-            print(f"Fitting tree {i+1}...")
-            grad, hess = binary_cross_entropy_grad_hess(preds, y)
-            tree = LeafWiseTree(
-                min_samples_split=self.min_samples_split,
-            )
-            tree.fit(X,grad, hess)
+            # Compute the gradients and Hessians based on current predictions
+            gradients, hessians = self._compute_grad_hess(y, predictions)
+
+            tree = LeafWiseTree()  # Initialize the custom tree
+            print(f"Fitting tree {i + 1}")
+            tree.grow_tree(X, gradients, hessians, max_depth=self.max_depth, n_jobs=self.n_jobs)  # Grow the custom tree with parallelization
             self.trees.append(tree)
 
-            # Update predictions
-            preds += self.learning_rate * tree.predict(X)
-        
-        # self.plot_tree(tree)
+            # Update predictions (Gradient Boosting update step)
+            tree_predictions = self._predict_tree(tree.root, X)
+            predictions += self.learning_rate * tree_predictions  # Update with learning rate
 
-    def predict_proba(self, X):
-        preds = np.full(X.shape[0], 0.5)
-        for tree in self.trees:
-            preds += self.learning_rate * tree.predict(X)
-        return sigmoid(preds)
+    def _compute_grad_hess(self, y, predictions):
+        # Compute gradients and Hessians for logistic regression (example)
+        errors = y - predictions
+        gradients = errors  # Gradient is the error
+        hessians = np.ones_like(errors)  # Hessian is constant (1) for simplicity
+        return gradients, hessians
+
+    def _predict_tree(self, node, X):
+        if node.is_leaf:
+            return np.full(X.shape[0], node.prediction)  # Return the leaf prediction
+        else:
+            left_indices = X[:, node.value] < node.threshold
+            right_indices = X[:, node.value] >= node.threshold
+            predictions = np.zeros(X.shape[0])
+            predictions[left_indices] = self._predict_tree(node.left, X[left_indices])
+            predictions[right_indices] = self._predict_tree(node.right, X[right_indices])
+            return predictions
 
     def predict(self, X):
-        probas = self.predict_proba(X)
-        return (probas >= 0.5).astype(int)
-    
-    def evaluate(self, X, y):
-        preds = self.predict(X)
-        accuracy = np.mean(preds == y)
-        return accuracy
-    
-    def visualize(self):
-        self.trees[-1].plot_tree()  # Plot the tree
-        plt.show()  # Display the plot
-    
-    def plot_tree(self, node, pos=(0.5, 1), level_width=0.4, vert_gap=0.1, ax=None, parent_pos=None):
-        """Recursively plot the decision tree."""
-        if ax is None:
-            fig, ax = plt.subplots(figsize=(12, 8))
-            ax.axis('off')
-
-        # Check if the node is a leaf (has a 'value' attribute)
-        if node.value is not None:  # Node is a leaf
-            ax.text(pos[0], pos[1], f"Value: {node.value:.3f}", 
-                    ha='center', va='center', bbox=dict(facecolor='lightgreen', edgecolor='black'))
-        else:  # Internal node with a feature split
-            ax.text(pos[0], pos[1], f"Feature {node.feature}\n<= {node.value:.2f}", 
-                    ha='center', va='center', bbox=dict(facecolor='orange', edgecolor='black'))
-
-        # Draw line to parent node
-        if parent_pos is not None:
-            ax.plot([parent_pos[0], pos[0]], [parent_pos[1], pos[1]], 'k-')
-
-        # Recursive plot for left and right children
-        if node.left is not None:
-            self.plot_tree(node.left, (pos[0] - level_width, pos[1] - vert_gap), 
-                        level_width * 0.5, vert_gap, ax, pos)
-        if node.right is not None:
-            self.plot_tree(node.right, (pos[0] + level_width, pos[1] - vert_gap), 
-                        level_width * 0.5, vert_gap, ax, pos)
+        # Final prediction is the sum of all trees' predictions, scaled by learning rate
+        predictions = np.full(X.shape[0], self.initial_prediction)
+        for tree in self.trees:
+            tree_predictions = self._predict_tree(tree.root, X)
+            predictions += self.learning_rate * tree_predictions
+        return predictions

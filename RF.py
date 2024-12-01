@@ -5,14 +5,18 @@ Description: Implementation of Random Forest from scratch
 from decision_tree import DecisionTree
 import numpy as np
 from collections import Counter
+import pandas as pd
 
 # Classe de forêt aléatoire
 def bootstrap_sample(X,y):
+    X = np.array(X)
+    y = np.array(y)
     n_samples = X.shape[0]
     idxs = np.random.choice(n_samples,n_samples,replace=True)
     return X[idxs],y[idxs]
 
 def most_common_label(y):
+    y = list(y)
     counter = Counter(y) # compter les occurences de chaque label
     most_common = counter.most_common(1)[0][0]
     return most_common
@@ -26,11 +30,15 @@ class RandomForest:
         self.trees = []
 
     def fit(self,X,y):
+        X = pd.DataFrame(X)
+        y = pd.Series(y)
         self.trees = []
         for i in range(self.n_trees):
             print(f"Fitting tree {i+1}...")
-            tree = DecisionTree(min_samples_split=self.min_samples_split,max_depth=self.max_depth,n_feats=self.n_feats)
+            tree = DecisionTree(max_depth=self.max_depth)
             X_sample,y_sample = bootstrap_sample(X,y)
+            X_sample = pd.DataFrame(X_sample)
+            y_sample = pd.Series(y_sample)
             tree.fit(X_sample,y_sample)
             self.trees.append(tree)
 

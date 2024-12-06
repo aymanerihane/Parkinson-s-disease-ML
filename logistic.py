@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-class Logistic:
+class Logistic():
     def __init__(self, learning_rate=0.01, epochs=1000):
         self.learning_rate = learning_rate
         self.epochs = epochs
@@ -24,6 +24,9 @@ class Logistic:
     def _compute_loss(self, y, y_pred):
         y_pred = np.clip(y_pred, 1e-10, 1 - 1e-10)  # Avoid log(0)
         return -np.mean(y * np.log(y_pred) + (1 - y) * np.log(1 - y_pred))
+    
+    def fit(self, X, y):
+        return self.one_vs_all(X, y)
 
     # Gradient descent step
     def _gradient_descent(self, X, y, weights):
@@ -84,3 +87,6 @@ class Logistic:
         # Calculate probabilities for each class
         probabilities = np.array([self._predict(X, weights) for weights in self.weights_list]).T
         return np.argmax(probabilities, axis=1)  # Return class with highest probability
+
+    def score(self,y,y_pred):
+        return np.mean(y == y_pred)

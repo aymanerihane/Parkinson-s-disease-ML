@@ -18,7 +18,7 @@ class LightFBM:
             # Compute the gradients and Hessians based on current predictions
             gradients, hessians = self._compute_grad_hess(y, predictions)
 
-            tree = LeafWiseTree()  # Initialize the custom tree
+            tree = LeafWiseTree(num_bins=60)  # Initialize the custom tree
             print(f"Fitting tree {i + 1}")
             tree.grow_tree(X, gradients, hessians, max_depth=self.max_depth, n_jobs=self.n_jobs)  # Grow the custom tree with parallelization
             self.trees.append(tree)
@@ -51,4 +51,8 @@ class LightFBM:
         for tree in self.trees:
             tree_predictions = self._predict_tree(tree.root, X)
             predictions += self.learning_rate * tree_predictions
-        return predictions
+        return (predictions > 0.5).astype(int)
+
+    
+    def score(self,y,y_pred):
+        return np.mean(y == y_pred)

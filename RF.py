@@ -34,6 +34,7 @@ class RandomForest:
         y = pd.Series(y)
         self.trees = []
         for i in range(self.n_trees):
+            # if (i+1)%10 == 0:
             print(f"Fitting tree {i+1}...")
             tree = DecisionTree(max_depth=self.max_depth)
             X_sample,y_sample = bootstrap_sample(X,y)
@@ -41,6 +42,9 @@ class RandomForest:
             y_sample = pd.Series(y_sample)
             tree.fit(X_sample,y_sample)
             self.trees.append(tree)
+
+    def score(self,y,y_pred):
+        return np.mean(y == y_pred)
 
     def predict(self,X):
         tree_preds = np.array([tree.predict(X) for tree in self.trees])

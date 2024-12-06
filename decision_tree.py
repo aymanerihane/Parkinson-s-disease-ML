@@ -83,7 +83,11 @@ class DecisionTree:
             return self.predict_example(tree.left, example)
         else:
             return self.predict_example(tree.right, example)
+        
+    def score(self,y,y_pred):
+        return np.mean(y == y_pred)
 
     # Predict class for multiple examples
     def predict(self, X):
+        X = pd.DataFrame(X)
         return X.apply(lambda x: self.predict_example(self.root, x), axis=1)

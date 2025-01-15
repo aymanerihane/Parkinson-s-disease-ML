@@ -2,15 +2,22 @@ import numpy as np
 import pandas as pd
 
 # Function to calculate entropy
+
 def entropy(y):
+    """
+        Formula: entropy = -sum(p * log2(p))
+    """
     # Ensure y is a pandas Series
     y = y.round().astype(int)
-    hist = np.bincount(y)
-    ps = hist / len(y)
+    hist = np.bincount(y) # Get frequency of each class
+    ps = hist / len(y) # Calculate probability of each class
     return -np.sum([p * np.log2(p) for p in ps if p > 0])
 
 # Calculate information gain
 def information_gain(y, y_left, y_right):
+    """
+    Formula: information_gain = entropy(parent) - weighted_entropy
+    """
     parent_entropy = entropy(y)
     n = len(y)
     n_left, n_right = len(y_left), len(y_right)
@@ -31,8 +38,9 @@ class Node:
 
 # DecisionTree class
 class DecisionTree:
-    def __init__(self, max_depth=3):
+    def __init__(self, max_depth=3, n_bins=10):
         self.max_depth = max_depth
+        self.n_bins = n_bins
         self.root = None
 
     # Find the best split for the data
@@ -42,7 +50,7 @@ class DecisionTree:
         left_split, right_split = None, None
 
         for feature in X.columns:
-            thresholds = X[feature].unique()
+            thresholds = np.linspace(X[feature].min(), X[feature].max(), self.n_bins) # Create bins for each feature
             for threshold in thresholds:
                 y_left = y[X[feature] <= threshold]
                 y_right = y[X[feature] > threshold]
@@ -58,7 +66,7 @@ class DecisionTree:
     # Recursively build the tree
     def build_tree(self, X, y, depth=0):
         if len(np.unique(y)) == 1 or depth == self.max_depth:
-            leaf_value = y.value_counts().idxmax()
+            leaf_value = y.value_counts().idxmax() # Get the most frequent class
             return Node(value=leaf_value)
 
         feature, threshold, (X_left, y_left), (X_right, y_right) = self.best_split(X, y)

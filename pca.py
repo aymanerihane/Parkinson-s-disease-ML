@@ -1,8 +1,33 @@
-# pca_utils.py
+"""
+Initialization (__init__ method):
+
+n_components: Number of principal components to keep.
+components: Principal components (eigenvectors).
+mean: Mean of the dataset.
+explained_variance_ratio_: Ratio of variance explained by each principal component.
+Fitting the model (fit method):
+
+Mean centering the data.
+Computing the covariance matrix.
+Calculating eigenvalues and eigenvectors of the covariance matrix.
+Sorting eigenvectors by eigenvalues in descending order.
+Calculating the explained variance ratio.
+Storing the top n_components eigenvectors.
+Transforming the data (transform method):
+
+Projecting the data onto the principal components.
+Utility functions:
+
+load_data: Loads data from a CSV file.
+plot_cumulative_variance: Plots the cumulative explained variance.
+find_optimal_components: Finds the optimal number of components to explain a given variance threshold.
+
+"""
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.linalg import eigh
 
 class PCA:
     def __init__(self, n_components=None):
@@ -14,33 +39,32 @@ class PCA:
     def fit(self, X):
         # Mean centering
         self.mean = np.mean(X, axis=0)
-        X = X - self.mean
+        X_centered = X - self.mean
 
         # Covariance matrix (function needs samples as columns)
-        cov = np.cov(X.T)
+        cov = np.cov(X_centered, rowvar=False)
 
         # Eigenvalues, eigenvectors
-        eigenvalues, eigenvectors = np.linalg.eig(cov)
+        eigenvalues, eigenvectors = eigh(cov)
 
         # Sort eigenvectors by eigenvalues in descending order
-        eigenvectors = eigenvectors.T
         idxs = np.argsort(eigenvalues)[::-1]
         eigenvalues = eigenvalues[idxs]
-        eigenvectors = eigenvectors[idxs]
+        eigenvectors = eigenvectors[:, idxs]
 
         # Explained variance ratio
         self.explained_variance_ratio_ = eigenvalues / np.sum(eigenvalues)
 
         # Store the first n eigenvectors (components)
         if self.n_components is not None:
-            self.components = eigenvectors[0: self.n_components]
+            self.components = eigenvectors[:, :self.n_components]
         else:
             self.components = eigenvectors
 
     def transform(self, X):
         # Project data onto the principal components
-        X = X - self.mean
-        return np.dot(X, self.components.T)
+        X_centered = X - self.mean
+        return np.dot(X_centered, self.components)
 
 
 def load_data(file_path):

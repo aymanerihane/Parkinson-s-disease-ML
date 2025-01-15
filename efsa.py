@@ -1,8 +1,7 @@
 import numpy as np
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
-from sklearn.feature_selection import RFE
-from sklearn.linear_model import LogisticRegression as Logistic
+from logistic import Logistic
 
 
 class FeatureSelection:
@@ -14,12 +13,15 @@ class FeatureSelection:
 
     # 1. Filter Method (Correlation-based)
     def filter_features(self, X, y):
+        """
+            Formula: correlation = cov(X, y) / (std(X) * std(y))
+        """
         if y is None:
             raise ValueError("Target vector 'y' is required for feature selection.")
 
         correlations = {}
         for feature in X.columns:
-            cov = np.cov(X[feature], y)[0, 1]
+            cov = np.cov(X[feature], y)[0, 1] # cov return a 2x2 matrix : [[cov(x,x), cov(x,y)], [cov(y,x), cov(y,y)]]  so we need to get the value at [0,1] to get the cov(x,y)
             std_feature = np.std(X[feature])
             std_target = np.std(y)
             correlation = cov / (std_feature * std_target)
@@ -89,15 +91,21 @@ class FeatureSelection:
         if n_features_to_select is None:
             n_features_to_select = self.max_features
 
-        # Use logistic regression as the base estimator
-        model = Logistic(max_iter=1000)
-        rfe = RFE(estimator=model, n_features_to_select=n_features_to_select)
-        rfe.fit(X, y)
+        def get_feature_importance(X, y):
+            model = Logistic(epochs=1000)
+            model.train_logistic_regression(X, y)
+            if not model.weights_list:
+                print(" Weighted list : ",model.weights_list)
+                raise ValueError("[WARNING]Model weights_list is empty. Ensure the model is trained properly.")
+            return np.abs(model.weights_list[-1])
 
-        # Extract selected feature rankings
-        selected_features_rfe = {X.columns[i]: rank for i, rank in enumerate(rfe.ranking_) if rank == 1}
+        selected_features = list(X.columns)
+        while len(selected_features) > n_features_to_select:
+            importances = get_feature_importance(X[selected_features], y)
+            least_important_feature_index = np.argmin(importances)
+            del selected_features[least_important_feature_index]
 
-        # Sort features by their rankings
+        selected_features_rfe = {feature: 1 for feature in selected_features}
         sorted_features_rfe = sorted(selected_features_rfe.items(), key=lambda x: x[1], reverse=False)
         return sorted_features_rfe
 

@@ -10,6 +10,9 @@ class Logistic():
 
     # Sigmoid function
     def _sigmoid(self, z):
+        """
+            Formula: 1 / (1 + e^(-z))
+        """
         # Clip values of z to avoid overflow in exp function
         z = np.clip(z, -500, 500)
         return 1 / (1 + np.exp(-z))
@@ -22,6 +25,9 @@ class Logistic():
 
     # Loss function (Binary Cross-Entropy)
     def _compute_loss(self, y, y_pred):
+        """
+            Formula: -1/N * Σ(y * log(y_pred) + (1 - y) * log(1 - y_pred))
+        """
         y_pred = np.clip(y_pred, 1e-10, 1 - 1e-10)  # Avoid log(0)
         return -np.mean(y * np.log(y_pred) + (1 - y) * np.log(1 - y_pred))
     
@@ -46,6 +52,7 @@ class Logistic():
             y_pred = self._predict(X, weights)
             loss = self._compute_loss(y_binary, y_pred)
             weights = self._gradient_descent(X, y_binary, weights)
+            self.weights_list.append(weights)  # Store weights for each epoch
 
             # Track the loss every 100 epochs
             if epoch % 100 == 0:

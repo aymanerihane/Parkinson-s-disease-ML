@@ -14,6 +14,8 @@ class FeatureSelection:
     # 1. Filter Method (Correlation-based)
     def filter_features(self, X, y):
         """
+            Filter Method: Correlation-based Feature Selection
+            discription: This method calculates the correlation between each feature and the target variable.
             Formula: correlation = cov(X, y) / (std(X) * std(y))
         """
         if y is None:
@@ -29,11 +31,16 @@ class FeatureSelection:
 
         # Sorting features by absolute correlation values
         correlations_abs = {key: abs(value) for key, value in correlations.items()}
-        sorted_features_filter = sorted(correlations_abs.items(), key=lambda x: x[1], reverse=True)
+        sorted_features_filter = sorted(correlations_abs.items(), key=lambda x: x[1], reverse=True)   
         return sorted_features_filter
 
     # 2. Lasso Logistic Regression (Embedded Method)
     def lasso_logistic_regression(self, X, y, alpha, max_iter=1000, learning_rate=0.01):
+        """
+            Embedded Method: Lasso Logistic Regression
+            discription: This method uses Lasso regularization to perform feature selection.
+            Formula: L1 regularization = alpha * |coef|
+        """
         X = np.column_stack([np.ones(X.shape[0]), X])  # Add intercept column (bias term)
         coef = np.zeros(X.shape[1])
 
@@ -59,7 +66,7 @@ class FeatureSelection:
 
     def embedded_method(self, X, y, alphas=None, cv=5):
         if alphas is None:
-            alphas = np.logspace(-4, 4, 100)
+            alphas = np.logspace(-4, 4, 100) 
 
         kf = KFold(n_splits=cv, shuffle=True, random_state=42)
         mse_path = []

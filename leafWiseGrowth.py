@@ -54,15 +54,16 @@ class LeafWiseTree:
                         future.result()  # Wait for the child nodes to finish
         else:
             # Set the leaf prediction based on gradients and hessians
-            mean_grad = np.sum(gradients)
-            mean_hess = np.sum(hessians)
-            node.prediction = mean_grad / (mean_hess + 1e-10)  # Add small value to avoid division by zero
+            sum_grad = np.sum(gradients)
+            sum_hess = np.sum(hessians)
+            node.prediction = sum_grad / (sum_hess + 1e-10)  # Add small value to avoid division by zero
 
     def _find_best_split(self, binned_X, gradients, hessians, n_jobs):
         best_feature = None
         best_bin = None
         best_gain = -float('inf')  # For regression, we maximize the gain
         
+        # Parallelize the search for the best split
         with ThreadPoolExecutor(max_workers=n_jobs) as executor:
             futures = []
             for feature in range(binned_X.shape[1]):
@@ -87,8 +88,8 @@ class LeafWiseTree:
         # Build histograms
         for bin_idx in range(self.num_bins):
             mask = binned_X[:, feature] == bin_idx
-            hist_grad[bin_idx] = np.sum(gradients[mask])
-            hist_hess[bin_idx] = np.sum(hessians[mask])
+            hist_grad[bin_idx] = np.sum(gradients[mask]) # Sum of gradients for the bin
+            hist_hess[bin_idx] = np.sum(hessians[mask]) # Sum of Hessians for the bin
 
         # Find the best split based on histograms
         best_gain = -float('inf')
@@ -97,10 +98,10 @@ class LeafWiseTree:
         total_grad, total_hess = np.sum(hist_grad), np.sum(hist_hess)
 
         for bin_idx in range(self.num_bins):
-            left_grad += hist_grad[bin_idx]
-            left_hess += hist_hess[bin_idx]
-            right_grad = total_grad - left_grad
-            right_hess = total_hess - left_hess
+            left_grad += hist_grad[bin_idx] # Cumulative sum of gradients
+            left_hess += hist_hess[bin_idx] # Cumulative sum of Hessians
+            right_grad = total_grad - left_grad # Sum of gradients in the right child
+            right_hess = total_hess - left_hess # Sum of Hessians in the right child
 
             if left_hess > 0 and right_hess > 0:  # Avoid division by zero
                 gain = self._calculate_gain(left_grad, left_hess, right_grad, right_hess)
@@ -111,6 +112,9 @@ class LeafWiseTree:
         return {'feature': feature, 'bin': best_bin, 'gain': best_gain}
 
     def _calculate_gain(self, left_grad, left_hess, right_grad, right_hess):
+        """
+            Formula: gain = 0.5 * (G_L^2 / (H_L + λ) + G_R^2 / (H_R + λ) - (G_L + G_R)^2 / (H_L + H_R + λ))
+        """
         # Calculate the gain based on gradients and Hessians
         gain = 0.5 * (left_grad ** 2 / (left_hess + 1e-10) + 
                       right_grad ** 2 / (right_hess + 1e-10) - 

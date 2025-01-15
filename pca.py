@@ -45,7 +45,7 @@ class PCA:
         cov = np.cov(X_centered, rowvar=False)
 
         # Eigenvalues, eigenvectors
-        eigenvalues, eigenvectors = eigh(cov)
+        eigenvalues, eigenvectors = eigh(cov) # eigh is used for symmetric matrices
 
         # Sort eigenvectors by eigenvalues in descending order
         idxs = np.argsort(eigenvalues)[::-1]
@@ -59,7 +59,9 @@ class PCA:
         if self.n_components is not None:
             self.components = eigenvectors[:, :self.n_components]
         else:
-            self.components = eigenvectors
+            cumulative_variance = np.cumsum(self.explained_variance_ratio_)
+            self.n_components = find_optimal_components(cumulative_variance)
+            self.components = eigenvectors[:, :self.n_components]
 
     def transform(self, X):
         # Project data onto the principal components

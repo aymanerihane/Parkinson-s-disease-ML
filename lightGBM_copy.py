@@ -38,7 +38,7 @@ class LightFBM:
         if node.is_leaf:
             return np.full(X.shape[0], node.prediction)  # Return the leaf prediction
         else:
-            left_indices = X[:, node.value] < node.threshold
+            left_indices = X[:, node.value] < node.threshold # node.value is the feature index
             right_indices = X[:, node.value] >= node.threshold
             predictions = np.zeros(X.shape[0])
             predictions[left_indices] = self._predict_tree(node.left, X[left_indices])
@@ -50,7 +50,7 @@ class LightFBM:
         predictions = np.full(X.shape[0], self.initial_prediction)
         for tree in self.trees:
             tree_predictions = self._predict_tree(tree.root, X)
-            predictions += self.learning_rate * tree_predictions
+            predictions += self.learning_rate * tree_predictions # Update with learning rate (shrinkage)
         return (predictions > 0.5).astype(int)
 
     
